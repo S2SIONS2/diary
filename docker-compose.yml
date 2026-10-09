@@ -1,0 +1,70 @@
+# ==============================================================================
+# React Native + Expo 개발 환경 도커 컴포즈 설정
+# ==============================================================================
+services:
+  app:
+    # 1. 빌드 설정: 현재 경로(.)의 Dockerfile을 기반으로 이미지를 빌드합니다.
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # 2. 실행될 컨테이너의 이름 지정
+    container_name: diary-expo-app
+
+    # 3. 컨테이너 내부 작업 경로
+    working_dir: /app
+
+    # 4. 볼륨 마운트 설정
+    volumes:
+      # [Watch 모드 사용 시] 일반 바인드 마운트는 충돌을 방지하기 위해 주석 처리하고 develop.watch가 파일 동기화를 전담합니다.
+      # - .:/app
+      # [중요] node_modules 도커 전용 볼륨
+      - app_node_modules:/app/node_modules
+
+    # 5. 포트 포워딩 (호스트 포트 : 컨테이너 포트)
+    ports:
+      - "8081:8081" # Metro Bundler 기본 포트 (Fast Refresh, 웹 브라우저 접속)
+      - "19000:19000" # Expo 개발 도구 기본 포트
+      - "19001:19001" # Metro 번들러 리버스 프록시 포트
+      - "19002:19002" # Expo DevTools 웹 대시보드 포트
+
+    # 6. 환경 변수 파일 연동 (.env 파일에서 Expo 계정 정보 등을 읽어옴)
+    env_file:
+      - path: .env
+        required: false
+
+    # 7. 환경 변수 설정
+    environment:
+      - NODE_ENV=development
+      # 컨테이너 외부에서도 접속할 수 있도록 모든 IP에 바인딩
+      - EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
+
+      # [중요] Windows 환경에서 호스트 파일 수정 시 도커 컨테이너가 변경을 즉각 감지(Fast Refresh/핫 리로드)할 수 있도록 폴링 활성화
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - WATCHMAN_DISABLED=1
+      # .env 파일 또는 시스템 환경변수로 주입받을 수 있는 Expo 인증 변수
+      # - EXPO_TOKEN=${EXPO_TOKEN}
+      # - EXPO_USERNAME=${EXPO_USERNAME}
+      # - EXPO_PASSWORD=${EXPO_PASSWORD}
+
+      # 8. 대화형 터미널 설정 (Expo CLI 메뉴 및 키보드 입력 활성화)
+    stdin_open: true # 표준 입력(stdin)을 열어두어 터미널 입력을 허용합니다.
+    tty: true # 가상 터미널(TTY)을 할당하여 'r'(리로드), 'w'(웹) 등 단축키를 사용할 수 있게 합니다.
+
+    # 9. [핵심] Docker Compose Watch: Windows 호스트 파일 변경 시 컨테이너에 Linux inotify 이벤트를 강제 발생시켜 Fast Refresh 보장
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - node_modules/
+            - .git/
+            - .expo/
+
+# ==============================================================================
+# 도커 네임드 볼륨 정의 (node_modules 보관용)
+# ==============================================================================
+volumes:
+  app_node_modules:
