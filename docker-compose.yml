@@ -20,6 +20,9 @@ services:
       # - .:/app
       # [중요] node_modules 도커 전용 볼륨
       - app_node_modules:/app/node_modules
+      # 컨테이너에서 패키지 설치 시 호스트에도 반영되도록 양방향 바인드 마운트
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
 
     # 5. 포트 포워딩 (호스트 포트 : 컨테이너 포트)
     ports:
@@ -62,6 +65,8 @@ services:
             - node_modules/
             - .git/
             - .expo/
+            - package.json
+            - package-lock.json
 
 # ==============================================================================
 # 도커 네임드 볼륨 정의 (node_modules 보관용)
